@@ -9,34 +9,44 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 
+const PORT = process.env.PORT || 3000;
+
+// conexión segura
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch(err => console.log('Error:', err));
+.then(() => console.log('MongoDB conectado'))
+.catch(err => console.error('Error Mongo:', err));
 
 const ItemSchema = new mongoose.Schema({
-    dato: String,
+    dato: { type: String, required: true },
     fecha: { type: Date, default: Date.now }
 });
 
 const Item = mongoose.model('Item', ItemSchema);
 
 app.get('/', async (req, res) => {
-    const items = await Item.find();
-    res.render('index', { items });
+    try {
+        const items = await Item.find();
+        res.render('index', { items });
+    } catch (err) {
+        res.send("Error al cargar datos");
+    }
 });
 
 app.post('/api/items',
     body('dato').trim().escape(),
     async (req, res) => {
-
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).send("Dato inválido");
         }
 
-        const item = new Item({ dato: req.body.dato });
-        await item.save();
-        res.redirect('/');
+        try {
+            const item = new Item({ dato: req.body.dato });
+            await item.save();
+            res.redirect('/');
+        } catch (err) {
+            res.send("Error al guardar");
+        }
     }
 );
 
@@ -58,7 +68,6 @@ app.delete('/api/items/:id', async (req, res) => {
     res.json({ ok: true });
 });
 
-app.listen(3000, () => {
-    console.log('Servidor en http://localhost:3000');
-    console.log('APP SEGURA');
+app.listen(PORT, () => {
+    console.log('Servidor en puerto ' + PORT);
 });
